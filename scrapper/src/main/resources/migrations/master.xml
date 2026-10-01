@@ -5,4 +5,7 @@
     <changeSet id="1-create-link-tracker" author="link-tracker">
         <sqlFile path="001-initial-schema.sql" relativeToChangelogFile="true"/>
     </changeSet>
+    <changeSet id="2-accounts-and-sessions" author="Sushcheva">
+        <sqlFile path="002-accounts-and-sessions.sql" relativeToChangelogFile="true"/>
+    </changeSet>
 </databaseChangeLog>

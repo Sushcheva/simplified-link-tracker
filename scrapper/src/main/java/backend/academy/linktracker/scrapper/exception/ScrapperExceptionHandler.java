@@ -26,7 +26,17 @@ public class ScrapperExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Эта ссылка уже отслеживается.");
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class,
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    ProblemDetail invalidFields(MethodArgumentNotValidException exception) {
+        if (exception.getBindingResult().getTarget() instanceof backend.academy.linktracker.scrapper.auth.RegisterRequest) {
+            String message = exception.getBindingResult().getAllErrors().stream()
+                    .map(error -> error.getDefaultMessage()).sorted().findFirst().orElse("Проверьте email и пароль.");
+            return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message);
+        }
+        return invalidRequest();
+    }
+
+    @ExceptionHandler({HttpMessageNotReadableException.class,
             HandlerMethodValidationException.class})
     ProblemDetail invalidRequest() {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,

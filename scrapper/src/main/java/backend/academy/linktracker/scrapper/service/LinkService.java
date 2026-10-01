@@ -24,40 +24,40 @@ public class LinkService {
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
-    public LinkPage listLinks(String search, String tag, int page, int size) {
-        return repository.findAll(search.trim(), tag.trim(), page, size);
+    public LinkPage listLinks(long ownerId, String search, String tag, int page, int size) {
+        return repository.findAll(ownerId, search.trim(), tag.trim(), page, size);
     }
 
-    public LinkEntity getLink(long id) {
-        return repository.findById(id).orElseThrow(this::notFound);
+    public LinkEntity getLink(long ownerId, long id) {
+        return repository.findById(ownerId, id).orElseThrow(this::notFound);
     }
 
     @Transactional
-    public LinkEntity addLink(LinkRequest request) {
-        return repository.addLink(normalizer.normalize(request.url()), request.title().trim(),
+    public LinkEntity addLink(long ownerId, LinkRequest request) {
+        return repository.addLink(ownerId, normalizer.normalize(request.url()), request.title().trim(),
                 normalizeTags(request.tags()), request.enabled());
     }
 
     @Transactional
-    public LinkEntity updateLink(long id, LinkRequest request) {
+    public LinkEntity updateLink(long ownerId, long id, LinkRequest request) {
         var url = normalizer.normalize(request.url());
         // Serialize a user's edit with background checks and other edits of the same link.
-        var previous = repository.lockById(id).orElseThrow(() -> repository.findById(id).isPresent()
+        var previous = repository.lockById(ownerId, id).orElseThrow(() -> repository.findById(ownerId, id).isPresent()
                 ? new ApiException(HttpStatus.CONFLICT, "Ссылка сейчас проверяется. Повторите сохранение позже.")
                 : notFound());
-        if (!previous.url().equals(url)) repository.clearUpdates(id);
-        return repository.updateLink(id, url, request.title().trim(), normalizeTags(request.tags()), request.enabled())
+        if (!previous.url().equals(url)) repository.clearUpdates(ownerId, id);
+        return repository.updateLink(ownerId, id, url, request.title().trim(), normalizeTags(request.tags()), request.enabled())
                 .orElseThrow(this::notFound);
     }
 
     @Transactional
-    public void removeLink(long id) {
-        if (repository.deleteLink(id) == 0) throw notFound();
+    public void removeLink(long ownerId, long id) {
+        if (repository.deleteLink(ownerId, id) == 0) throw notFound();
     }
 
-    public List<LinkUpdate> recentUpdates(Long linkId) {
-        if (linkId != null) getLink(linkId);
-        return repository.recentUpdates(linkId);
+    public List<LinkUpdate> recentUpdates(long ownerId, Long linkId) {
+        if (linkId != null) getLink(ownerId, linkId);
+        return repository.recentUpdates(ownerId, linkId);
     }
 
     private List<String> normalizeTags(List<String> tags) {

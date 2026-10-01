@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: link-tracker-assign-__RELEASE_ID__
+  namespace: link-tracker
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 180
+  template:
+    metadata:
+      labels:
+        app: link-tracker-assign
+        release: __RELEASE_ID__
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: assign-legacy
+          image: __APP_IMAGE__
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: link-tracker-config-__RELEASE_ID__
+            - secretRef:
+                name: link-tracker-secrets
+          env:
+            - name: APP_MODE
+              value: assign-legacy
+            - name: MIGRATIONS_ENABLED
+              value: "false"
+            - name: SCHEDULER_ENABLED
+              value: "false"
+            - name: SPRING_MAIN_WEB_APPLICATION_TYPE
+              value: none
+            - name: LEGACY_OWNER_EMAIL
+              value: ""
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi

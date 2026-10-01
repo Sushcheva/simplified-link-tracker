@@ -1,7 +1,7 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
-const state = { links: [], page: 0, size: 20, total: 0, search: "", tag: "", editing: null, deleting: null, loading: 0, busy: new Set() };
+const state = { user: null, csrf: null, authEpoch: 0, authMode: "login", links: [], page: 0, size: 20, total: 0, search: "", tag: "", editing: null, deleting: null, loading: 0, busy: new Set() };
 let toastTimer;
 
 function element(tag, className, text) {
@@ -12,14 +12,149 @@ function element(tag, className, text) {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(path, {
-    ...options,
-    headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...options.headers },
-  });
+  const method = (options.method || "GET").toUpperCase();
+  const unsafe = !["GET", "HEAD", "OPTIONS"].includes(method);
+  if (unsafe && !state.csrf) await refreshCsrf();
+  const epoch = state.authEpoch;
+  const headers = {
+    ...(options.body ? { "Content-Type": options.body instanceof URLSearchParams
+      ? "application/x-www-form-urlencoded" : "application/json" } : {}),
+    ...(unsafe ? { [state.csrf.headerName]: state.csrf.token } : {}),
+    ...options.headers,
+  };
+  const response = await fetch(path, { ...options, method, headers, credentials: "same-origin" });
+  if (epoch !== state.authEpoch) throw new Error("Сессия изменилась. Повторите действие.");
   if (response.status === 204) return null;
   const data = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(data?.detail || "Не удалось выполнить запрос. Попробуйте ещё раз.");
+  if (!response.ok) {
+    if (response.status === 403) state.csrf = null;
+    if (response.status === 401 && path !== "/api/auth/login" && state.user) {
+      showSignedOut("Сессия завершена. Войдите снова.");
+    }
+    const error = new Error(data?.detail || "Не удалось выполнить запрос. Попробуйте ещё раз.");
+    error.status = response.status;
+    throw error;
+  }
   return data;
+}
+
+async function refreshCsrf() {
+  state.csrf = await api("/api/auth/csrf");
+}
+
+function setAuthMode(mode) {
+  state.authMode = mode;
+  const register = mode === "register";
+  $("auth-title").textContent = register ? "Всё важное — рядом." : "Рады вас видеть.";
+  $("auth-description").textContent = register ? "Создайте аккаунт и соберите свою коллекцию." : "Войдите, чтобы открыть свои ссылки и обновления.";
+  $("auth-submit").textContent = register ? "Создать аккаунт" : "Войти";
+  $("confirm-password-field").hidden = !register;
+  $("auth-confirm").required = register;
+  $("password-hint").hidden = !register;
+  $("auth-password").minLength = register ? 10 : 1;
+  $("auth-password").autocomplete = register ? "new-password" : "current-password";
+  $("auth-error").hidden = true;
+  for (const [id, selected] of [["show-login", !register], ["show-register", register]]) {
+    $(id).classList.toggle("selected", selected);
+    $(id).setAttribute("aria-pressed", String(selected));
+  }
+}
+
+function showSignedOut(message = "") {
+  state.authEpoch++;
+  state.loading++;
+  state.user = null;
+  state.csrf = null;
+  state.links = [];
+  state.total = 0;
+  state.page = 0;
+  state.search = "";
+  state.tag = "";
+  state.editing = null;
+  state.deleting = null;
+  state.busy.clear();
+  $("links-list").replaceChildren();
+  $("updates-list").replaceChildren();
+  $("current-user").textContent = "";
+  $("workspace-email").textContent = "";
+  $("search-form").reset();
+  $("link-form").reset();
+  for (const id of ["link-dialog", "delete-dialog"]) if ($(id).open) $(id).close();
+  $("workspace-shell").hidden = true;
+  $("auth-loading").hidden = true;
+  $("auth-view").hidden = false;
+  $("auth-password").value = "";
+  $("auth-confirm").value = "";
+  $("toast").hidden = true;
+  setAuthMode("login");
+  if (message) {
+    $("auth-error").textContent = message;
+    $("auth-error").hidden = false;
+  }
+}
+
+async function showSignedIn(user) {
+  state.authEpoch++;
+  state.user = user;
+  $("current-user").textContent = user.email;
+  $("workspace-email").textContent = user.email;
+  $("auth-form").reset();
+  $("auth-view").hidden = true;
+  $("auth-loading").hidden = true;
+  $("workspace-shell").hidden = false;
+  await load();
+}
+
+$("show-login").addEventListener("click", () => setAuthMode("login"));
+$("show-register").addEventListener("click", () => setAuthMode("register"));
+$("auth-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const register = state.authMode === "register";
+  const email = $("auth-email").value.trim();
+  const password = $("auth-password").value;
+  if (register && password !== $("auth-confirm").value) {
+    $("auth-error").textContent = "Пароли не совпадают.";
+    $("auth-error").hidden = false;
+    return;
+  }
+  if (register && new TextEncoder().encode(password).length > 72) {
+    $("auth-error").textContent = "Пароль должен занимать не более 72 байт UTF-8.";
+    $("auth-error").hidden = false;
+    return;
+  }
+  $("auth-submit").disabled = true;
+  $("auth-error").hidden = true;
+  try {
+    await refreshCsrf();
+    if (register) {
+      await api("/api/auth/register", { method: "POST", body: JSON.stringify({ email, password }) });
+      setAuthMode("login");
+    }
+    const user = await api("/api/auth/login", { method: "POST", body: new URLSearchParams({ email, password }) });
+    await refreshCsrf();
+    await showSignedIn(user);
+  } catch (error) {
+    $("auth-error").textContent = error.message === "Failed to fetch" ? "Нет соединения с сервером. Попробуйте ещё раз." : error.message;
+    $("auth-error").hidden = false;
+  } finally { $("auth-submit").disabled = false; }
+});
+
+$("logout").addEventListener("click", async () => {
+  $("logout").disabled = true;
+  try {
+    await api("/api/auth/logout", { method: "POST" });
+    showSignedOut();
+  } catch (error) { toast(error.message); }
+  finally { $("logout").disabled = false; }
+});
+
+async function bootstrap() {
+  try {
+    await refreshCsrf();
+    await showSignedIn(await api("/api/auth/me"));
+  } catch (error) {
+    showSignedOut(error.status === 401 ? "" : "Не удалось подключиться к серверу. Попробуйте войти ещё раз.");
+  }
 }
 
 function dateLabel(value) {
@@ -115,6 +250,7 @@ function renderUpdates(updates) {
 }
 
 async function load() {
+  if (!state.user) return;
   const generation = ++state.loading;
   $("links-panel").setAttribute("aria-busy", "true");
   const query = new URLSearchParams({ search: state.search, tag: state.tag, page: state.page, size: state.size });
@@ -250,5 +386,5 @@ document.querySelectorAll("button[data-view]").forEach((button) => {
   });
 });
 
-load();
-setInterval(() => { if (!document.hidden && !$("link-dialog").open && !$("delete-dialog").open) load(); }, 30000);
+bootstrap();
+setInterval(() => { if (state.user && !document.hidden && !$("link-dialog").open && !$("delete-dialog").open) load(); }, 30000);

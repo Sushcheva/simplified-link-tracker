@@ -18,7 +18,7 @@ import tools.jackson.databind.ObjectMapper;
 @Repository
 public class JdbcLinkRepository {
     private static final String FILTER = """
-            WHERE (:search = '' OR title ILIKE '%' || :search || '%' OR url ILIKE '%' || :search || '%')
+            WHERE owner_id = :ownerId AND (:search = '' OR title ILIKE '%' || :search || '%' OR url ILIKE '%' || :search || '%')
               AND (:tag = '' OR tags @> CAST(:tagJson AS jsonb))
             """;
     private final JdbcClient jdbc;
@@ -29,31 +29,31 @@ public class JdbcLinkRepository {
         this.mapper = mapper;
     }
 
-    public LinkPage findAll(String search, String tag, int page, int size) {
+    public LinkPage findAll(long ownerId, String search, String tag, int page, int size) {
         String tagJson = mapper.writeValueAsString(List.of(tag));
         long total = jdbc.sql("SELECT COUNT(*) FROM links " + FILTER)
-                .param("search", search).param("tag", tag).param("tagJson", tagJson)
+                .param("ownerId", ownerId).param("search", search).param("tag", tag).param("tagJson", tagJson)
                 .query(Long.class).single();
         List<LinkEntity> links = jdbc.sql("SELECT * FROM links " + FILTER + " ORDER BY id DESC LIMIT :size OFFSET :offset")
-                .param("search", search).param("tag", tag).param("tagJson", tagJson)
+                .param("ownerId", ownerId).param("search", search).param("tag", tag).param("tagJson", tagJson)
                 .param("size", size).param("offset", (long) page * size).query(this::mapLink).list();
         return new LinkPage(links, total, page, size);
     }
 
-    public Optional<LinkEntity> findById(long id) {
-        return jdbc.sql("SELECT * FROM links WHERE id = :id").param("id", id).query(this::mapLink).optional();
+    public Optional<LinkEntity> findById(long ownerId, long id) {
+        return jdbc.sql("SELECT * FROM links WHERE id = :id AND owner_id = :ownerId").param("ownerId", ownerId).param("id", id).query(this::mapLink).optional();
     }
 
-    public LinkEntity addLink(URI url, String title, List<String> tags, boolean enabled) {
+    public LinkEntity addLink(long ownerId, URI url, String title, List<String> tags, boolean enabled) {
         return jdbc.sql("""
-                INSERT INTO links (url, title, tags, enabled)
-                VALUES (:url, :title, CAST(:tags AS jsonb), :enabled) RETURNING *
-                """).param("url", url.toString()).param("title", title)
+                INSERT INTO links (owner_id, url, title, tags, enabled)
+                VALUES (:ownerId, :url, :title, CAST(:tags AS jsonb), :enabled) RETURNING *
+                """).param("ownerId", ownerId).param("url", url.toString()).param("title", title)
                 .param("tags", mapper.writeValueAsString(tags)).param("enabled", enabled)
                 .query(this::mapLink).single();
     }
 
-    public Optional<LinkEntity> updateLink(long id, URI url, String title, List<String> tags, boolean enabled) {
+    public Optional<LinkEntity> updateLink(long ownerId, long id, URI url, String title, List<String> tags, boolean enabled) {
         // Changing the resource establishes a fresh monitoring baseline.
         return jdbc.sql("""
                 UPDATE links SET title = :title, tags = CAST(:tags AS jsonb), enabled = :enabled,
@@ -63,30 +63,32 @@ public class JdbcLinkRepository {
                     next_check_at = CASE WHEN url <> :url OR (NOT enabled AND :enabled)
                         THEN CURRENT_TIMESTAMP ELSE next_check_at END,
                     url = :url
-                WHERE id = :id RETURNING *
-                """).param("id", id).param("url", url.toString()).param("title", title)
+                WHERE id = :id AND owner_id = :ownerId RETURNING *
+                """).param("ownerId", ownerId).param("id", id).param("url", url.toString()).param("title", title)
                 .param("tags", mapper.writeValueAsString(tags)).param("enabled", enabled)
                 .query(this::mapLink).optional();
     }
 
-    public Optional<LinkEntity> lockById(long id) {
-        return jdbc.sql("SELECT * FROM links WHERE id = :id FOR UPDATE SKIP LOCKED")
-                .param("id", id).query(this::mapLink).optional();
+    public Optional<LinkEntity> lockById(long ownerId, long id) {
+        return jdbc.sql("SELECT * FROM links WHERE id = :id AND owner_id = :ownerId FOR UPDATE SKIP LOCKED")
+                .param("ownerId", ownerId).param("id", id).query(this::mapLink).optional();
     }
 
     public Optional<LinkEntity> lockNextDue() {
         return jdbc.sql("""
-                SELECT * FROM links WHERE enabled AND next_check_at <= CURRENT_TIMESTAMP
+                SELECT * FROM links WHERE owner_id IS NOT NULL AND enabled AND next_check_at <= CURRENT_TIMESTAMP
                 ORDER BY next_check_at, id LIMIT 1 FOR UPDATE SKIP LOCKED
                 """).query(this::mapLink).optional();
     }
 
-    public int deleteLink(long id) {
-        return jdbc.sql("DELETE FROM links WHERE id = :id").param("id", id).update();
+    public int deleteLink(long ownerId, long id) {
+        return jdbc.sql("DELETE FROM links WHERE id = :id AND owner_id = :ownerId")
+                .param("ownerId", ownerId).param("id", id).update();
     }
 
-    public void clearUpdates(long id) {
-        jdbc.sql("DELETE FROM link_updates WHERE link_id = :id").param("id", id).update();
+    public void clearUpdates(long ownerId, long id) {
+        jdbc.sql("DELETE FROM link_updates WHERE link_id = :id AND link_id IN (SELECT id FROM links WHERE owner_id = :ownerId)")
+                .param("ownerId", ownerId).param("id", id).update();
     }
 
     public void recordUpdate(long id, String description, OffsetDateTime updatedAt) {
@@ -105,11 +107,11 @@ public class JdbcLinkRepository {
                 .param("seconds", intervalSeconds).param("error", error).update();
     }
 
-    public List<LinkUpdate> recentUpdates(Long linkId) {
-        String filter = linkId == null ? "" : " WHERE u.link_id = :linkId";
+    public List<LinkUpdate> recentUpdates(long ownerId, Long linkId) {
+        String filter = " WHERE l.owner_id = :ownerId" + (linkId == null ? "" : " AND u.link_id = :linkId");
         var query = jdbc.sql("""
                 SELECT u.*, l.url, l.title FROM link_updates u JOIN links l ON l.id = u.link_id
-                """ + filter + " ORDER BY u.detected_at DESC, u.id DESC LIMIT 20");
+                """ + filter + " ORDER BY u.detected_at DESC, u.id DESC LIMIT 20").param("ownerId", ownerId);
         if (linkId != null) query = query.param("linkId", linkId);
         return query.query((rs, row) -> new LinkUpdate(rs.getLong("id"), rs.getLong("link_id"),
                 URI.create(rs.getString("url")), rs.getString("title"), rs.getString("description"),

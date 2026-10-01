@@ -15,6 +15,10 @@ spring:
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:5}
       connection-timeout: 5000
+  session:
+    timeout: ${SESSION_TIMEOUT:30m}
+    jdbc:
+      initialize-schema: never
   liquibase:
     enabled: ${MIGRATIONS_ENABLED:false}
     change-log: classpath:migrations/master.xml
@@ -37,6 +41,8 @@ management:
         readiness:
           include: readinessState,db
 app:
+  security:
+    secure-cookie: ${SESSION_COOKIE_SECURE:false}
   mode: ${APP_MODE:web}
   scheduler:
     enabled: ${SCHEDULER_ENABLED:true}

@@ -2,9 +2,11 @@
 """Archive only source/configuration/documentation; never include local secrets or build products."""
 from pathlib import Path
 import zipfile
+import xml.etree.ElementTree as ET
 
 root = Path(__file__).resolve().parent.parent
-destination = root / "dist" / "simplified-link-tracker-1.0.0.zip"
+version = ET.parse(root / "pom.xml").getroot().find("{http://maven.apache.org/POM/4.0.0}version").text
+destination = root / "dist" / f"simplified-link-tracker-{version}.zip"
 destination.parent.mkdir(exist_ok=True)
 excluded = {".git", ".idea", ".local", "target", "dist", "__pycache__", ".DS_Store"}
 with zipfile.ZipFile(destination, "w", zipfile.ZIP_DEFLATED) as archive:

@@ -36,12 +36,12 @@ public class LinkMonitorService {
     }
 
     @Transactional
-    public LinkEntity checkNow(long id) {
-        var link = repository.lockById(id).orElseThrow(() -> repository.findById(id).isPresent()
+    public LinkEntity checkNow(long ownerId, long id) {
+        var link = repository.lockById(ownerId, id).orElseThrow(() -> repository.findById(ownerId, id).isPresent()
                 ? new ApiException(HttpStatus.CONFLICT, "Ссылка уже проверяется. Попробуйте позже.")
                 : new ApiException(HttpStatus.NOT_FOUND, "Ссылка не найдена."));
         check(link);
-        return repository.findById(id).orElseThrow();
+        return repository.findById(ownerId, id).orElseThrow();
     }
 
     private void check(LinkEntity link) {

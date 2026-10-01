@@ -21,7 +21,7 @@ destination = root / ".local" / "k8s" / args.release
 if destination.exists():
     parser.error("This release directory already exists; choose a new release ID")
 rendered = {}
-for name in ("configmap.yaml", "migrate.yaml", "web.yaml", "worker.yaml"):
+for name in ("configmap.yaml", "migrate.yaml", "web.yaml", "worker.yaml", "assign-legacy.yaml"):
     text = (root / "k8s" / name).read_text()
     text = text.replace("__RELEASE_ID__", args.release).replace("__APP_IMAGE__", json.dumps(args.image))
     if "__RELEASE_ID__" in text or "__APP_IMAGE__" in text:

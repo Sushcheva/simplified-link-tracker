@@ -9,8 +9,8 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 public class ScrapperApplication {
     public static void main(String[] args) {
         var context = SpringApplication.run(ScrapperApplication.class, args);
-        // The same release has a one-off migration mode, with no HTTP server or scheduler.
-        if ("migrate".equals(context.getEnvironment().getProperty("app.mode"))) {
+        // Administrative modes use the same release and finish after their one-off task.
+        if (java.util.Set.of("migrate", "assign-legacy").contains(context.getEnvironment().getProperty("app.mode", "web"))) {
             context.close();
         }
     }

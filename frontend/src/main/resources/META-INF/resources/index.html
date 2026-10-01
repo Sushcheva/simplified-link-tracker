@@ -11,10 +11,32 @@
   <script src="/app.js" defer></script>
 </head>
 <body>
+  <div id="auth-loading" class="auth-loading" role="status">Проверяем вход…</div>
+  <main id="auth-view" class="auth-screen" hidden>
+    <section class="auth-card" aria-labelledby="auth-title">
+      <a class="brand" href="/" aria-label="Link Tracker"><span class="brand-icon">↗</span><span>link<span class="brand-light">tracker</span><small>ВАЖНОЕ РЯДОМ</small></span></a>
+      <p class="eyebrow">ВАШЕ ЛИЧНОЕ ПРОСТРАНСТВО</p>
+      <h1 id="auth-title">Рады вас видеть.</h1>
+      <p class="auth-description" id="auth-description">Войдите, чтобы открыть свои ссылки и обновления.</p>
+      <div class="auth-tabs" aria-label="Вход или регистрация">
+        <button id="show-login" class="auth-tab selected" type="button" aria-pressed="true">Вход</button>
+        <button id="show-register" class="auth-tab" type="button" aria-pressed="false">Регистрация</button>
+      </div>
+      <form id="auth-form">
+        <label class="form-field">Email<input id="auth-email" name="email" type="email" autocomplete="username" maxlength="254" required placeholder="you@example.com" autocapitalize="none" spellcheck="false"></label>
+        <label class="form-field">Пароль<input id="auth-password" name="password" type="password" autocomplete="current-password" maxlength="64" required><small id="password-hint" hidden>От 10 до 64 символов, не более 72 байт UTF-8. Можно использовать пробелы.</small></label>
+        <label class="form-field" id="confirm-password-field" hidden>Повторите пароль<input id="auth-confirm" type="password" autocomplete="new-password" maxlength="64"></label>
+        <p id="auth-error" class="form-error" role="alert" hidden></p>
+        <button id="auth-submit" class="button primary auth-submit" type="submit">Войти</button>
+      </form>
+      <p class="auth-note">Ваша коллекция доступна только вам.<br>GitHub и Stack Overflow — в одной ленте.</p>
+    </section>
+  </main>
+  <div id="workspace-shell" hidden>
   <a class="skip-link" href="#main">К содержимому</a>
   <aside class="sidebar">
     <a class="brand" href="/" aria-label="Link Tracker, главная"><span class="brand-icon">↗</span><span>link<span class="brand-light">tracker</span><small>ВАЖНОЕ РЯДОМ</small></span></a>
-    <div class="workspace"><span class="workspace-avatar">М</span><div>Моё пространство<small>Коллекция ссылок</small></div></div>
+    <div class="workspace"><span class="workspace-avatar">М</span><div>Моё пространство<small id="workspace-email">Коллекция ссылок</small></div></div>
     <p class="nav-label">ОБЗОР</p>
     <nav aria-label="Основная навигация">
       <button class="nav-item selected" data-view="links" aria-current="page"><span aria-hidden="true">↗</span>Мои ссылки</button>
@@ -25,7 +47,7 @@
   </aside>
 
   <div class="main-shell">
-    <header class="topbar"><span>Личное пространство <span class="slash">/</span> <strong id="breadcrumb">Мои ссылки</strong></span><span class="topbar-label">LINK TRACKER <span>01</span></span></header>
+    <header class="topbar"><span>Личное пространство <span class="slash">/</span> <strong id="breadcrumb">Мои ссылки</strong></span><div class="account-controls"><span id="current-user"></span><button id="logout" class="button secondary" type="button">Выйти</button></div></header>
     <main id="main">
       <section class="page-heading">
         <div><p class="eyebrow">СОХРАНЯЙТЕ. ОТСЛЕЖИВАЙТЕ. БУДЬТЕ В КУРСЕ.</p><h1 id="page-title">Ваши ссылки,<br><span>под наблюдением.</span></h1><p class="page-description" id="page-description">Репозитории и вопросы, к которым хочется вернуться.</p></div>
@@ -56,6 +78,8 @@
       </section>
       <footer class="page-footer"><span>Маленькая коллекция. Большие идеи.</span><span>Link Tracker / simplified</span></footer>
     </main>
+  </div>
+
   </div>
 
   <dialog id="link-dialog" aria-labelledby="dialog-title">
