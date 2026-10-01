@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: link-tracker-migrate-__RELEASE_ID__
+  namespace: link-tracker
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 180
+  template:
+    metadata:
+      labels:
+        app: link-tracker-migrate
+        release: __RELEASE_ID__
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: migrate
+          image: __APP_IMAGE__
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: link-tracker-config-__RELEASE_ID__
+            - secretRef:
+                name: link-tracker-secrets
+          env:
+            - name: APP_MODE
+              value: migrate
+            - name: MIGRATIONS_ENABLED
+              value: "true"
+            - name: SCHEDULER_ENABLED
+              value: "false"
+            - name: SPRING_MAIN_WEB_APPLICATION_TYPE
+              value: none
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi

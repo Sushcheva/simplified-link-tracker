@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Личный трекер репозиториев GitHub и вопросов Stack Overflow.">
+  <title>Link Tracker — ваши ссылки</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%232e55dd'/%3E%3Ctext x='20' y='28' text-anchor='middle' font-size='28' fill='white'%3E↗%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержимому</a>
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="Link Tracker, главная"><span class="brand-icon">↗</span><span>link<span class="brand-light">tracker</span><small>ВАЖНОЕ РЯДОМ</small></span></a>
+    <div class="workspace"><span class="workspace-avatar">М</span><div>Моё пространство<small>Коллекция ссылок</small></div></div>
+    <p class="nav-label">ОБЗОР</p>
+    <nav aria-label="Основная навигация">
+      <button class="nav-item selected" data-view="links" aria-current="page"><span aria-hidden="true">↗</span>Мои ссылки</button>
+      <button class="nav-item" data-view="updates"><span aria-hidden="true">◷</span>Обновления</button>
+    </nav>
+    <div class="sidebar-note"><span class="note-symbol" aria-hidden="true">✳</span><strong>Меньше вкладок.<br>Больше внимания.</strong><p>Сохраняйте полезные ссылки, а изменения ищите в одной ленте.</p><span class="note-line"></span></div>
+    <div class="sidebar-footer"><span class="status-dot"></span>GitHub · Stack Overflow</div>
+  </aside>
+
+  <div class="main-shell">
+    <header class="topbar"><span>Личное пространство <span class="slash">/</span> <strong id="breadcrumb">Мои ссылки</strong></span><span class="topbar-label">LINK TRACKER <span>01</span></span></header>
+    <main id="main">
+      <section class="page-heading">
+        <div><p class="eyebrow">СОХРАНЯЙТЕ. ОТСЛЕЖИВАЙТЕ. БУДЬТЕ В КУРСЕ.</p><h1 id="page-title">Ваши ссылки,<br><span>под наблюдением.</span></h1><p class="page-description" id="page-description">Репозитории и вопросы, к которым хочется вернуться.</p></div>
+        <button class="button primary add-link" id="add-link"><span aria-hidden="true">＋</span>Добавить ссылку</button>
+      </section>
+
+      <div id="page-error" class="banner error-banner" role="alert" hidden><span id="page-error-text"></span><button id="retry-load" class="text-button">Повторить</button></div>
+
+      <section id="links-view" aria-label="Отслеживаемые ссылки">
+        <div class="collection-heading"><div><h2>Моя коллекция <span id="link-count" class="count">—</span></h2><p>Всё интересное — в одном месте.</p></div><button id="refresh" class="button secondary"><span aria-hidden="true">↻</span>Обновить</button></div>
+        <form id="search-form" class="filters" role="search">
+          <label class="search-field"><span aria-hidden="true">⌕</span><input id="search" type="search" maxlength="200" placeholder="Поиск по названию или ссылке" aria-label="Поиск по названию или ссылке"></label>
+          <label class="tag-field"><span>Тег</span><input id="tag-filter" maxlength="32" placeholder="Например, java" aria-label="Фильтр по тегу"></label>
+          <button class="button secondary" type="submit">Найти</button><button id="reset-filters" class="text-button" type="button" hidden>Сбросить</button>
+        </form>
+        <div class="links-panel" aria-live="polite" aria-busy="true" id="links-panel">
+          <div class="table-heading" aria-hidden="true"><span>ССЫЛКА / ТЕГИ</span><span>СОСТОЯНИЕ</span><span>ДЕЙСТВИЯ</span></div>
+          <div id="links-list"><p class="loading">Загружаем вашу коллекцию…</p></div>
+          <div id="empty-state" class="empty-state" hidden><div class="empty-icon" aria-hidden="true">↗</div><h3 id="empty-title">Здесь начнётся ваша коллекция</h3><p id="empty-description">Добавьте репозиторий GitHub или вопрос Stack Overflow.<br>Когда что-то изменится, обновление появится в ленте.</p><button id="empty-add" class="button primary">Добавить первую ссылку</button></div>
+        </div>
+        <div class="pagination"><span id="page-label"></span><div><button id="previous-page" class="button secondary" disabled aria-label="Предыдущая страница">← Назад</button><button id="next-page" class="button secondary" disabled>Далее →</button></div></div>
+        <div class="info-strip"><span aria-hidden="true">◎</span><p><strong>Первый шаг — точка отсчёта.</strong> Первая успешная проверка запоминает состояние ресурса. В ленту попадут последующие изменения.</p></div>
+      </section>
+
+      <section id="updates-view" aria-label="Последние обновления" hidden>
+        <div class="collection-heading"><div><h2>Лента изменений</h2><p>Последние 20 обновлений ваших ссылок.</p></div><button id="refresh-updates" class="button secondary">↻ Обновить</button></div>
+        <div id="updates-list" class="updates-list" aria-live="polite"></div>
+      </section>
+      <footer class="page-footer"><span>Маленькая коллекция. Большие идеи.</span><span>Link Tracker / simplified</span></footer>
+    </main>
+  </div>
+
+  <dialog id="link-dialog" aria-labelledby="dialog-title">
+    <div class="dialog-heading"><div><p class="eyebrow">ВАША КОЛЛЕКЦИЯ</p><h2 id="dialog-title">Добавить ссылку</h2></div><button type="button" class="close-button" id="close-dialog" aria-label="Закрыть форму">×</button></div>
+    <form id="link-form">
+      <label class="form-field">Название<input id="link-title" name="title" maxlength="120" required placeholder="Например, Spring Boot"></label>
+      <label class="form-field">Ссылка<input id="link-url" name="url" type="url" maxlength="2048" required placeholder="https://github.com/owner/repository"><small>Репозиторий GitHub или вопрос Stack Overflow, HTTPS.</small></label>
+      <label class="form-field">Теги<input id="link-tags" name="tags" maxlength="330" placeholder="java, backend, почитать"><small>До 10 тегов через запятую, до 32 символов каждый.</small></label>
+      <label class="checkbox-field"><input id="link-enabled" type="checkbox" checked><span><strong>Отслеживать изменения</strong><small>Можно приостановить и включить снова.</small></span></label>
+      <p class="form-hint" id="edit-hint" hidden>При смене адреса история этой ссылки удалится, а отслеживание начнётся заново.</p>
+      <p id="form-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button type="button" id="cancel-dialog" class="button secondary">Отмена</button><button id="save-link" type="submit" class="button primary">Добавить ссылку</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="delete-dialog" aria-labelledby="delete-title">
+    <div class="dialog-heading"><h2 id="delete-title">Удалить ссылку?</h2></div>
+    <p class="delete-description">«<span id="delete-link-title"></span>» и её история обновлений будут удалены из коллекции.</p>
+    <p id="delete-error" class="form-error" role="alert" hidden></p>
+    <div class="dialog-actions"><button id="cancel-delete" class="button secondary">Оставить</button><button id="confirm-delete" class="button danger">Удалить</button></div>
+  </dialog>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

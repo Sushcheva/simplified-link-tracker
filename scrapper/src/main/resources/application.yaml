@@ -1,0 +1,53 @@
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+  http2:
+    enabled: false
+spring:
+  application:
+    name: simplified-link-tracker
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/linktracker}
+    username: ${DATABASE_USER:linktracker}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+      connection-timeout: 5000
+  liquibase:
+    enabled: ${MIGRATIONS_ENABLED:false}
+    change-log: classpath:migrations/master.xml
+  task:
+    scheduling:
+      shutdown:
+        await-termination: true
+        await-termination-period: 15s
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+app:
+  mode: ${APP_MODE:web}
+  scheduler:
+    enabled: ${SCHEDULER_ENABLED:true}
+    interval: ${SCHEDULER_INTERVAL:60s}
+    batch-size: ${SCHEDULER_BATCH_SIZE:20}
+  external-api:
+    github-url: ${GITHUB_API_URL:https://api.github.com}
+    stackoverflow-url: ${STACKOVERFLOW_API_URL:https://api.stackexchange.com/2.3}
+    github-token: ${GITHUB_TOKEN:}
+    connect-timeout: ${API_CONNECT_TIMEOUT:2s}
+    read-timeout: ${API_READ_TIMEOUT:5s}
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
