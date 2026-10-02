@@ -8,8 +8,8 @@ version=ET.parse('pom.xml').getroot().find('{http://maven.apache.org/POM/4.0.0}v
 assert os.environ['RELEASE_TAG']=='v'+version, 'Release tag must match Maven version'
 assert re.fullmatch(r'v\d+\.\d+\.\d+',os.environ['RELEASE_TAG'])
 PY
-# Refuse publication if the repository cannot protect the tag and attached assets.
-test "$(gh api "repos/$REPOSITORY/immutable-releases" --jq .enabled)" = true
+# Repository immutability is enabled by an administrator before the first release.
+# The job token intentionally has no Administration permission.
 if gh release view "$RELEASE_TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
   echo 'Release already exists. Inspect it; do not overwrite existing release assets.' >&2
   exit 1
@@ -34,3 +34,4 @@ gh release upload "$RELEASE_TAG" --repo "$REPOSITORY" \
   dist/release/deployment.zip dist/release/release.json \
   dist/release/runtime.json dist/release/SHA256SUMS
 gh release edit "$RELEASE_TAG" --repo "$REPOSITORY" --draft=false --latest
+test "$(gh api "repos/$REPOSITORY/releases/tags/$RELEASE_TAG" --jq .immutable)" = true

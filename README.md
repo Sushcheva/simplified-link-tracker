@@ -20,6 +20,7 @@ Simplified Link Tracker — веб-приложение для хранения 
 ниже, описание предметной области и разбор 12 факторов — в [отчёте](Отчёт.md).
 Исходники и история версий: [Sushcheva/simplified-link-tracker](https://github.com/Sushcheva/simplified-link-tracker).
 Для локального Kubernetes в Docker Desktop есть [пошаговый гайд](docs/Kubernetes.md).
+Сборка, автоматические проверки и выпуск версии описаны в [гайде по релизам](docs/Releases.md).
 
 ## Структура
 
@@ -231,7 +232,7 @@ java -jar scrapper/target/scrapper.jar
 | `GITHUB_TOKEN` | Необязательный токен GitHub |
 | `API_CONNECT_TIMEOUT` / `API_READ_TIMEOUT` | `2s` / `5s` |
 | `LOG_LEVEL` | `INFO` |
-| `RELEASE_VERSION` | `1.1.0`; тег локального Docker-образа |
+| `RELEASE_VERSION` | `1.2.0`; тег локального Docker-образа |
 
 При запуске JAR переменные напрямую получает Java. Compose передаёт основные
 переменные из `compose.yaml`; для переопределения дополнительных свойств добавьте их
@@ -323,7 +324,7 @@ web-процесса вход сохраняется, пока сессия де
 Первый зарегистрированный пользователь не получает чужие данные автоматически.
 
 Для перехода с версии без входа сначала остановите старые app/web/worker, сохраните
-резервную копию БД и соберите 1.1.0. В `.env` задайте `RELEASE_VERSION=1.1.0`.
+резервную копию БД и соберите 1.2.0. В `.env` задайте `RELEASE_VERSION=1.2.0`.
 Затем выполните миграции и запустите только новую версию. Для Compose:
 
 ```bash
@@ -431,13 +432,22 @@ APP_MODE=worker SPRING_MAIN_WEB_APPLICATION_TYPE=none SCHEDULER_ENABLED=true \
 При масштабировании через Compose потребуется настроить разные опубликованные порты
 или балансировщик: текущий файл рассчитан на один локальный HTTP-экземпляр.
 
+## Автоматические проверки и релизы
+
+GitHub Actions собирает проект на Temurin Java 25, выполняет unit/integration-тесты
+с PostgreSQL 16.4, запускает контейнеры и проверяет нагрузку и жизненный цикл процессов.
+Результаты находятся в разделе [Actions](https://github.com/Sushcheva/simplified-link-tracker/actions).
+При отправке тега `v<версия>` после успешных проверок публикуются тот же проверенный
+образ в GHCR, JAR, исходники и Kubernetes-комплект с образом по digest.
+Порядок выпуска и ограничения измерений — в [docs/Releases.md](docs/Releases.md).
+
 ## Исходники для сдачи
 
 ```bash
 python3 scripts/package_source.py
 ```
 
-Архив появится по пути `dist/simplified-link-tracker-1.1.0.zip`. В него входят исходники,
+Архив появится по пути `dist/simplified-link-tracker-1.2.0.zip`. В него входят исходники,
 Maven Wrapper, конфигурация и `Отчёт.md`; `.env`, `.git`, каталоги сборки, IDE и результаты тестов исключены.
 Проект ведётся в одном Git-репозитории, связанном через `origin` с GitHub.
 Коммит сдаваемой версии можно получить командой `git rev-parse HEAD`.

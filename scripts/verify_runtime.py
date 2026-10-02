@@ -140,7 +140,7 @@ try:
     report['application_image_id']=docker('image','inspect',args.image,'--format','{{.Id}}')
     db=create('db',args.postgres_image,'--memory','512m','-e','POSTGRES_DB=linktracker','-e','POSTGRES_USER=tracker','-e','POSTGRES_PASSWORD=isolated-runtime-test')
     docker('start',db)
-    wait_until(lambda:command('docker','exec',db,'pg_isready','-U','tracker','-d','linktracker',check=False).startswith('/var/run/postgresql:5432 - accepting'))
+    wait_until(lambda:command('docker','exec',db,'pg_isready','-h','127.0.0.1','-U','tracker','-d','linktracker',check=False).startswith('127.0.0.1:5432 - accepting'))
     report['postgres_version']=docker('exec',db,'psql','-U','tracker','-d','linktracker','-Atc','SHOW server_version')
     assert report['postgres_version'].startswith('16.4'),report['postgres_version']
     fixture_container=create('fixture','python:3.12-alpine','--memory','128m','-p','127.0.0.1::8090',command_args=('python','/fixture.py'))
