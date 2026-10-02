@@ -1,0 +1,114 @@
+name: Verify and release
+
+'on':
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16.4
+        env:
+          POSTGRES_DB: linktracker_test
+          POSTGRES_USER: tracker
+          POSTGRES_PASSWORD: isolated-ci-test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U tracker -d linktracker_test"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Compile and run unit/integration tests on PostgreSQL 16.4
+        env:
+          TEST_DATABASE_URL: jdbc:postgresql://localhost:5432/linktracker_test
+          TEST_DATABASE_USER: tracker
+          TEST_DATABASE_PASSWORD: isolated-ci-test
+        run: ./mvnw --batch-mode --no-transfer-progress -Pintegration verify
+      - name: Package the tested JAR into the runtime image
+        run: >-
+          docker build --target prebuilt
+          --label org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          --label org.opencontainers.image.revision=${{ github.sha }}
+          --tag link-tracker-verified:${{ github.sha }} .
+      - name: Check load, two replicas, workers, startup, SIGTERM and crash recovery
+        run: >-
+          python3 scripts/verify_runtime.py --image link-tracker-verified:${{ github.sha }}
+          --duration 20 --clients 4,16 --output .local/verification
+      - name: Validate deployment bundle and archive sources
+        run: |
+          docker compose --env-file .env.example config --quiet
+          python3 scripts/render_k8s.py --release ci-check --image link-tracker-verified:${{ github.sha }}
+          ruby -ryaml -e 'Dir[".local/k8s/ci-check/*.yaml"].each { |f| YAML.load_stream(File.read(f)) }'
+          python3 scripts/package_source.py
+      - name: Preserve exact tested image for release; no rebuild in publication job
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: docker save link-tracker-verified:${{ github.sha }} | gzip > dist/verified-image.tar.gz
+      - name: Save verification results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verification-${{ github.sha }}
+          include-hidden-files: true
+          retention-days: 30
+          path: |
+            .local/verification/
+            scrapper/target/surefire-reports/
+            scrapper/target/failsafe-reports/
+      - name: Save release inputs
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-inputs-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            dist/verified-image.tar.gz
+            dist/simplified-link-tracker-*.zip
+            scrapper/target/scrapper.jar
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-inputs-${{ github.sha }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: verification-${{ github.sha }}
+          path: verification
+      - name: Publish the verified image and assemble a release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: bash scripts/publish_release.sh

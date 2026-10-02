@@ -1,6 +1,7 @@
 .git
 .idea
-**/target
+**/target/*
+!scrapper/target/scrapper.jar
 .env
 .env.*
 dist

@@ -23,7 +23,7 @@ spec:
             - configMapRef:
                 name: link-tracker-config-__RELEASE_ID__
             - secretRef:
-                name: link-tracker-secrets
+                name: __SECRET_NAME__
           env:
             - name: APP_MODE
               value: assign-legacy

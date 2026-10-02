@@ -22,7 +22,7 @@ services:
     restart: unless-stopped
 
   migrate:
-    image: simplified-link-tracker:${RELEASE_VERSION:-1.1.0}
+    image: simplified-link-tracker:${RELEASE_VERSION:-1.2.0}
     environment:
       <<: *app-environment
       APP_MODE: migrate
@@ -35,7 +35,7 @@ services:
     restart: "no"
 
   app:
-    image: simplified-link-tracker:${RELEASE_VERSION:-1.1.0}
+    image: simplified-link-tracker:${RELEASE_VERSION:-1.2.0}
     build: .
     ports:
       - "127.0.0.1:${APP_PORT:-8080}:8080"
