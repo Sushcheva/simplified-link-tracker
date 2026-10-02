@@ -1,0 +1,127 @@
+{
+  "started_at": "2026-10-02T13:19:27.125853+00:00",
+  "success": true,
+  "application_image": "link-tracker-verified:722478cef628a8bd33e014803ead56be70156ade",
+  "host": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+  "postgres_image": "postgres:16.4",
+  "limits": {
+    "web_cpus": 1,
+    "web_memory_mib": 768,
+    "java_heap_mib": 256,
+    "db_pool_per_process": 5
+  },
+  "load_model": "closed-loop; no think time; persistent HTTP/1.1; 70% list, 20% history, 10% update; one account/link per user; client round-robin without a proxy; external API fixture",
+  "load": [
+    {
+      "replicas": 1,
+      "clients": 4,
+      "elapsed_seconds": 20.033,
+      "requests": 6360,
+      "rps": 317.47,
+      "p50_ms": 4.78,
+      "p95_ms": 67.26,
+      "p99_ms": 72.41,
+      "errors": 0,
+      "error_details": {},
+      "successful_requests_per_replica": {
+        "1": 6360
+      }
+    },
+    {
+      "replicas": 2,
+      "clients": 4,
+      "elapsed_seconds": 20.004,
+      "requests": 7952,
+      "rps": 397.53,
+      "p50_ms": 5.43,
+      "p95_ms": 45.66,
+      "p99_ms": 54.2,
+      "errors": 0,
+      "error_details": {},
+      "successful_requests_per_replica": {
+        "1": 3976,
+        "2": 3976
+      }
+    },
+    {
+      "replicas": 1,
+      "clients": 16,
+      "elapsed_seconds": 20.008,
+      "requests": 12454,
+      "rps": 622.46,
+      "p50_ms": 14.04,
+      "p95_ms": 71.25,
+      "p99_ms": 78.49,
+      "errors": 0,
+      "error_details": {},
+      "successful_requests_per_replica": {
+        "1": 12454
+      }
+    },
+    {
+      "replicas": 2,
+      "clients": 16,
+      "elapsed_seconds": 20.007,
+      "requests": 16982,
+      "rps": 848.79,
+      "p50_ms": 13.08,
+      "p95_ms": 52.93,
+      "p99_ms": 64.07,
+      "errors": 0,
+      "error_details": {},
+      "successful_requests_per_replica": {
+        "1": 8493,
+        "2": 8489
+      }
+    }
+  ],
+  "lifecycle": {
+    "idle_sigterm": {
+      "seconds": 0.23,
+      "exit_code": "143",
+      "signal": "SIGTERM"
+    },
+    "session_survived_restart": true,
+    "inflight_sigterm": {
+      "seconds": 3.092,
+      "exit_code": "143",
+      "signal": "SIGTERM"
+    },
+    "inflight_request_completed": true,
+    "inflight_sigkill": {
+      "seconds": 0.158,
+      "exit_code": "137",
+      "signal": "SIGKILL"
+    },
+    "recovery_on_other_replica_seconds": 0.124,
+    "crash_rollback_retry_no_duplicates": true,
+    "worker_sigterm": {
+      "seconds": 0.281,
+      "exit_code": "143",
+      "signal": "SIGTERM"
+    }
+  },
+  "startup_samples_seconds": [
+    11.533,
+    12.577,
+    11.849,
+    11.174
+  ],
+  "docker": {
+    "ServerVersion": "28.0.4",
+    "NCPU": 4,
+    "MemTotal": 16766414848,
+    "Architecture": "x86_64",
+    "OperatingSystem": "Ubuntu 24.04.5 LTS"
+  },
+  "application_image_id": "sha256:ff32d2087fe317e1ff90bc0662b5b4984eba1df726a26367b2df5cce223cfbe4",
+  "postgres_version": "16.4 (Debian 16.4-1.pgdg120+2)",
+  "workers": {
+    "replicas": 2,
+    "links": 8,
+    "one_event_per_link": true,
+    "max_external_requests_in_parallel": 2,
+    "both_processes_checked_links": true
+  },
+  "finished_at": "2026-10-02T13:22:35.669943+00:00"
+}
