@@ -103,6 +103,9 @@ def app(name, worker=False):
 def percentile(samples,q): return round(sorted(samples)[max(0,math.ceil(len(samples)*q)-1)]*1000,2)
 
 def workload(users, origins, duration):
+    # Start independent scenarios with fresh connections, preserving cookie/session.
+    # A raw http.client connection may otherwise outlive the server's idle timeout.
+    for client,_ in users: client.close()
     deadline=time.perf_counter()+duration
     started=time.perf_counter()
     def loop(user):
@@ -252,4 +255,5 @@ finally:
         (output/(name.removeprefix(prefix+'-')+'.log')).write_text(log.stdout+log.stderr)
         docker('rm','--force',name,check=False)
     docker('network','rm',network,check=False)
+    print(json.dumps(report,ensure_ascii=False,indent=2),flush=True)
     print('Results:',output/'runtime.json',flush=True)
